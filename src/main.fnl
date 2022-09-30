@@ -106,74 +106,15 @@
             score-b (score-market b)]
         (> score-a score-b)))))
 
-; (show (. *market-cache* 9))
-; (show (score-market (. *market-cache* 4)))
 (print "START")
 (print "-----")
 (print)
 (rank-all-markets)
-(for [i 1 10] (let [mkt (. *market-cache* i) (s l p r t) (score-market mkt)] (show mkt) (show [s l p r t])))
+(for [i 1 10] 
+  (let [mkt (. *market-cache* i) 
+        (s l p r t) (score-market mkt)] 
+    (show mkt) 
+    (show [s l p r t])))
 (print)
 (print "---")
 (print "END")
-
-
-; (show
-;   [(# (icollect [_ m (ipairs *market-cache*)]
-;                 (if (?. m :isResolved) true nil)))
-;    (# (icollect [_ m (ipairs *market-cache*)]
-;                 (if (not (?. m :isResolved)) true nil)))])
-; (show (icollect [_ m (ipairs *market-cache*)]
-;                 { :resolved (. m :isResolved)
-;                   :question (. m :question)
-;                   :url (. m :url) }))
-
-; (local bets (M:get-bets { :username "journcy" }))
-
-; (show (# *bets-cache*))
-; (let [bets-resolved (icollect [_ b (ipairs *bets-cache*)]
-;                               (. *indexed-market-cache* (. b :contractId) :isResolved))]
-;   (show [(# (icollect [_ b (ipairs bets-resolved)] (if b b nil))) (# (icollect [_ b (ipairs bets-resolved)] (if b nil b)))]))
-; (show (icollect [_ b (ipairs *bets-cache*)]
-;                 (let [m (. *indexed-market-cache* (. b :contractId))]
-;                   (when (not (. m :isResolved)) m))))
-
-(comment (show ))
-
-; (show (M:get-bets { :username "journcy" }))
-; (show (os.date "%c" (ms->s 1642999445792)))
-; (show (os.date "%c" (ms->s 1663938153978)))
-; (show (M:get-market-by-id "pG3hOMmZlDv3PR3CLyi0"))
-; (show (M:get-market "will-the-dc-trucker-convoy-prevent"))
-
-; (show (M:get-authenticated-user))
-; (show (M:get-user-by-id "7uH1XOw7dAcuF2AbQRBZVPl7JLJ2"))
-; (show (M:get-markets { :limit 10 }))
-; (show (# (M:get-all-markets)))
-
-; (show [(p->risk 0.50)
-;        (p->risk 0.45)
-;        (p->risk 0.35)
-;        (p->risk 0.11)
-;        (p->risk 0.06)
-;        (p->risk 0.02)
-;        (p->risk 0.005)])
-; -> { 0.5, 0.445, 0.335, 0.087, 0.0333, 0.0075, 0.0025 }
-
-; (show (M:get-market "will-us-regulators-instruct-manifol"))
-
-; (show (M.market-prob 0.206141 1068.53 957.028))
-; (show (M.new-yes 979.019 0.206141 957.028))
-
-; (let [market (Market:new { :yes 1072.49 :no 956.109 :p 0.206141 })]
-;   (show {
-;     "preprob" (market:prob)
-;     "shares" (market:order :yes 1)
-;     "prob" (-> (market:order :yes 1) (#(: $2 :prob))) }))
-
-; (-> (Market:new { :yes 1068.53 :no 957.028 :p 0.206141 })
-;     (: :prob)
-;     print)
-
-; (show (# (M:get-markets)))
-; (show (# (M:get-all-markets)))
