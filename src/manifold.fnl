@@ -25,10 +25,10 @@
       (set body (json.encode body))
       (tset headers :Content-Type "application/json"))
     (requests.request method (.. self.BASE_URI route)
-      { :query options.query
-        :headers headers
-        :body body
-        :parse json.decode })))
+                      {:query options.query
+                       :headers headers
+                       :body body
+                       :parse json.decode})))
 
 (fn pagination-helper [request-func responses before limit]
   (let [limit (or limit 1000)
@@ -85,7 +85,9 @@
 (fn Manifold.get-markets [self options]
   "GET /v0/markets"
   (let [options (or options {})]
-    (self:request "GET" "/markets" { :query { :limit options.limit :before options.before } })))
+    (self:request "GET" "/markets" 
+                  {:query {:limit options.limit
+                           :before options.before}})))
 
 (fn Manifold.get-market-by-id [self id]
   "GET /v0/market/[marketId]"
@@ -102,12 +104,11 @@
 (fn Manifold.get-bets [self options]
   "GET /v0/bets"
   (let [options (or options {})]
-    (self:request "GET" "/bets" {
-       :query {
-         :username options.username
-         :market options.market
-         :limit options.limit
-         :before options.before }})))
+    (self:request "GET" "/bets" 
+                  {:query {:username options.username
+                           :market options.market
+                           :limit options.limit
+                           :before options.before}})))
 
 
 ;; Buying and selling
@@ -115,22 +116,20 @@
 (fn Manifold.bet [self options]
   "POST /v0/bet"
   (assert (and options.amount options.contract options.outcome))
-  (self:request "POST" "/bet" {
-    :authenticated true
-    :body {
-      :amount options.amount
-      :contractId options.contract
-      :outcome options.outcome
-      :limitProb options.limit-prob }}))
+  (self:request "POST" "/bet" 
+                {:authenticated true
+                 :body {:amount options.amount
+                        :contractId options.contract
+                        :outcome options.outcome
+                        :limitProb options.limit-prob}}))
 
 (fn Manifold.sell [self id options]
   "POST /v0/market/[marketId]/sell"
   (let [options (or options {})]
-    (self:request "POST" (.. "/market/" id "/sell") {
-        :authenticated true
-        :body {
-          :outcome options.outcome
-          :shares options.shares }})))
+    (self:request "POST" (.. "/market/" id "/sell") 
+                  {:authenticated true
+                   :body {:outcome options.outcome
+                          :shares options.share}})))
 
 
 ;; Managing markets
@@ -140,28 +139,26 @@
   (assert (and options.outcome-type options.question options.description options.close-time))
   (assert (and (= options.outcome-type "BINARY") options.initial-prob))
   (assert (and (= options.outcome-type "NUMERIC") options.min options.max))
-  (self:request "POST" "/market" {
-    :authenticated true
-    :body {
-      :outcomeType options.outcome-type
-      :question options.question
-      :description options.description
-      :closeTime options.close-time
-      :tags options.tags
-      :initialProb options.initial-prob
-      :min options.min
-      :max options.max }}))
+  (self:request "POST" "/market" 
+                {:authenticated true
+                 :body {:outcomeType options.outcome-type
+                        :question options.question
+                        :description options.description
+                        :closeTime options.close-time
+                        :tags options.tags
+                        :initialProb options.initial-prob
+                        :min options.min
+                        :max options.max}}))
 
 (fn Manifold.resolve-market [self id options]
   "POST /v0/market/[marketId]/resolve"
   (assert (and options.outcome))
-  (self:request "POST" (.. "/market/" id "/resolve") {
-    :authenticated true
-    :body {
-      :outcome options.outcome
-      :probabilityInt options.probability-int
-      :resolutions options.resolutions
-      :value options.value }}))
+  (self:request "POST" (.. "/market/" id "/resolve") 
+                {:authenticated true
+                 :body {:outcome options.outcome
+                        :probabilityInt options.probability-int
+                        :resolutions options.resolutions
+                        :value options.value}}))
 
 
 ;; Implement Maniswap
@@ -170,10 +167,10 @@
 
 (local Market { :yes 100.0 :no 100.0 :p 0.50 })
 (fn Market.new [self o]
-    (var obj (or o {}))
-    (setmetatable obj self)
-    (set self.__index self)
-    obj)
+  (var obj (or o {}))
+  (setmetatable obj self)
+  (set self.__index self)
+  obj)
 
 (fn Market.prob [self]
   "Returns the market's YES probability. P = pn/(pn + (1-p)y)."
@@ -201,10 +198,9 @@
   (assert (or (= share :yes) (= share :no)))
   (let [lk (math.log (self:k))
         new-share ((match share :yes new-no :no new-yes) lk self.p amt)]
-    (Market:new {
-      :yes (if (= share :no)  new-share amt)
-      :no  (if (= share :yes) new-share amt)
-      :p   self.p })))
+    (Market:new {:yes (if (= share :no)  new-share amt)
+                 :no  (if (= share :yes) new-share amt)
+                 :p   self.p})))
 
 (fn Market.order [self share amt]
   "Determine count of shares purchased for an amount of money and new market state."
