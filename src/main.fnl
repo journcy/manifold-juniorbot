@@ -4,12 +4,16 @@
 
 (local show #(-> $1 inspect print))
 
-(local *api-key* (or (os.getenv "MANIFOLD_API_KEY") 
-                     (error "You must set $MANIFOLD_API_KEY.")))
-(local M (Manifold:new { :api_key *api-key* }))
+(fn log [...]
+  (print (table.concat [...] " ")))
 
 (fn ms->s [milliseconds]
   (math.floor (/ milliseconds 1000)))
+
+(fn floor-divide [numerator denominator]
+  "Returns (num // den, num % den)"
+  (values (math.floor (/ numerator denominator)) 
+          (% numerator denominator)))
 
 (fn find-nearest-bounds [space v]
   "space is a descending-sorted table of numbers, v is a number. Returns the
@@ -62,6 +66,10 @@
     (/ (os.difftime close-time *local-time*)
        *seconds-in-a-day*)))
 
+(local *api-key* (or (os.getenv "MANIFOLD_API_KEY") 
+                     (error "You must set $MANIFOLD_API_KEY.")))
+(local M (Manifold:new { :api_key *api-key* }))
+
 (fn make-market [mkt]
   (Market:new {:yes mkt.pool.YES
                :no mkt.pool.NO
@@ -93,8 +101,11 @@
 
 (fn get-portfolio-value [])
 
+(fn get-balance []
+  (or (?. (M:get-authenticated-user) :balance) 0))
+
 (fn get-net-worth []
-  (let [balance (?. (M:get-authenticated-user) :balance)
+  (let [balance (get-balance)
         investments (get-portfolio-value)]
     (+ balance investments)))
 
@@ -115,15 +126,36 @@
                       score-b (score-market b)]
                   (> score-a score-b)))))
 
-(print "START")
-(print "-----")
-(print)
-(rank-all-markets)
-(for [i 1 10] 
-  (let [mkt (. *market-cache* i) 
-        (s l p r t) (score-market mkt)] 
-    (show mkt) 
-    (show [s l p r t])))
-(print)
-(print "---")
-(print "END")
+; TODO: Double check that prices/etc. haven't changed before we actually do the
+; buy
+(fn place-bet [mkt outcome amount]
+  (log "Buying" amount outcome "on" mkt.question)
+  (M:bet {:contract mkt.id
+          :outcome outcome
+          :amount amount}))
+
+(fn make-buy [mkt amount]
+  (let [prob (mkt:prob)
+        outcome (if (> prob 0.50) :YES :NO)]
+    (place-bet mkt outcome amount)))
+
+; TODO: Divide the money more intelligently to maximize returns.
+(local *buying-increment* 100)
+(fn spend-balance [markets]
+  (let [balance (get-balance)
+        (incr-to-spend last-incr) (floor-divide balance *buying-increment*)
+        mkt-count (# markets)]
+    (log "Found M$" balance "to spend across" 
+         (+ incr-to-spend (if (> last-incr 0) 1 0)) "markets.")
+    (if (> incr-to-spend 0) 
+      (for [i 1 incr-to-spend] 
+        (make-buy (. markets i) *buying-increment*)))
+    (if (> last-incr 0)
+      (make-buy (. markets (+ incr-to-spend 1)) last-incr))
+    (if (= incr-to-spend last-incr 0) (log "No balance to spend!"))))
+
+(fn main []
+  (rank-all-markets)
+  (spend-balance *market-cache*))
+
+(main)

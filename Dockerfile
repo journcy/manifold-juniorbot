@@ -6,4 +6,5 @@ COPY . /junior
 
 WORKDIR /junior/src
 
-CMD fennel5.3 main.fnl
+# 1 day = 86400 seconds
+CMD while true; do fennel5.3 main.fnl; sleep 86400; done

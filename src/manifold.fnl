@@ -19,7 +19,8 @@
         headers {}]
     (var body options.body)
     (when options.authenticated
-      (assert (~= self.api_key nil) "You must provide a valid API key to make authenticated requests.")
+      (assert (~= self.api_key nil) 
+              "You must provide a valid API key to make authenticated requests.")
       (tset headers :Authorization (.. "Key " self.api_key)))
     (when (~= options.body nil)
       (set body (json.encode body))
@@ -96,7 +97,8 @@
 (local *markets-request-limit* 1000)
 (fn Manifold.get-all-markets [self]
   "Repeatedly get markets until all have been fetched."
-  (pagination-helper (partial self.get-markets self) [] nil *markets-request-limit*))
+  (pagination-helper (partial self.get-markets self) 
+                     [] nil *markets-request-limit*))
 
 
 ;; Bet queries
@@ -136,7 +138,8 @@
 
 (fn Manifold.create-market [self options]
   "POST /v0/market"
-  (assert (and options.outcome-type options.question options.description options.close-time))
+  (assert (and options.outcome-type options.question
+               options.description options.close-time))
   (assert (and (= options.outcome-type "BINARY") options.initial-prob))
   (assert (and (= options.outcome-type "NUMERIC") options.min options.max))
   (self:request "POST" "/market" 
@@ -203,7 +206,8 @@
                  :p   self.p})))
 
 (fn Market.order [self share amt]
-  "Determine count of shares purchased for an amount of money and new market state."
+  "Determine count of shares purchased for an amount of money and new market
+  state."
   (assert (or (= share :yes) (= share :no)))
   (let [other-share (match share :yes :no :no :yes)
         new-share (+ (. self other-share) amt)
