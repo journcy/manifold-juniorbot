@@ -27,13 +27,13 @@ You can also run things the normal way if you like; the requirements are:
 
 ## Usage
 
-Docker:
+Docker (this will run the bot once a day indefinitely):
 
 ```sh
-dr run -e MANIFOLD_API_KEY=your-api-key-here jr
+docker run -e MANIFOLD_API_KEY=your-api-key-here jr
 ```
 
-Shell:
+Shell (this will run it once):
 
 ```sh
 cd src && MANIFOLD_API_KEY=your-api-key-here fennel main.fnl
