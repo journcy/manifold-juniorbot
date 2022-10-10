@@ -165,8 +165,8 @@
 
 
 ;; Implement Maniswap
-; See https://manifoldmarkets.notion.site/Maniswap-ce406e1e897d417cbd491071ea8a0c39
-; See https://docs.manifold.markets/market-details
+;; See https://manifoldmarkets.notion.site/Maniswap-ce406e1e897d417cbd491071ea8a0c39
+;; See https://docs.manifold.markets/market-details
 
 (local Market { :yes 100.0 :no 100.0 :p 0.50 })
 (fn Market.new [self o]
@@ -215,8 +215,8 @@
         delta (- (. self share) (. new-market share))]
     (values (+ amt delta) new-market)))
 
-; TODO: adding & removing liquidity
-; TODO: add more market types?
+;; TODO: adding & removing liquidity
+;; TODO: add more market types?
 
 (tset Manifold :Market Market)
 

@@ -29,8 +29,6 @@
           (= v k)   [v v]
           [u l])))))
 
-; TODO: I literally just made this table up can we replace it with something
-; more, uh, something?
 (local p->risk-table 
   {0.50 0.50
    0.40 0.39
@@ -126,8 +124,7 @@
                       score-b (score-market b)]
                   (> score-a score-b)))))
 
-; TODO: Double check that prices/etc. haven't changed before we actually do the
-; buy
+;; TODO: Double check that prices haven't changed before we place orders
 (fn place-bet [mkt outcome amount]
   (log "Buying" amount outcome "on" mkt.question)
   (M:bet {:contract mkt.id
@@ -139,7 +136,6 @@
         outcome (if (> prob 0.50) :YES :NO)]
     (place-bet mkt outcome amount)))
 
-; TODO: Divide the money more intelligently to maximize returns.
 (local *buying-increment* 100)
 (fn spend-balance [markets]
   (let [balance (get-balance)
@@ -153,6 +149,12 @@
     (if (> last-incr 0)
       (make-buy (. markets (+ incr-to-spend 1)) last-incr))
     (if (= incr-to-spend last-incr 0) (log "No balance to spend!"))))
+
+;; TODO: Detect and ignore markets that resolve PROB, we lose money on them
+;; TODO: Calculate portfolio value and sell out of low-return shares to free up cash
+;; TODO: Account for new flat trading fee in market math code
+;; TODO: Divide invested money intelligently to maximize returns
+;; TODO: Calculate the "risk" curve from past market resolution data
 
 (fn main []
   (rank-all-markets)
