@@ -5,7 +5,7 @@
 (local show #(-> $1 inspect print))
 
 (fn log [...]
-  (print (table.concat [...] " ")))
+  (print (table.concat [(os.date "%F %T") "|" ...] " ")))
 
 (fn ms->s [milliseconds]
   (math.floor (/ milliseconds 1000)))
@@ -14,6 +14,13 @@
   "Returns (num // den, num % den)"
   (values (math.floor (/ numerator denominator)) 
           (% numerator denominator)))
+
+(fn table-has [t e]
+  "Returns true if the element e is in the table t, false otherwise."
+  (accumulate [result false
+               _ v (ipairs t)
+               &until result]
+    (= e v)))
 
 (fn find-nearest-bounds [space v]
   "space is a descending-sorted table of numbers, v is a number. Returns the
@@ -69,43 +76,88 @@
 (local M (Manifold:new { :api_key *api-key* }))
 
 (fn make-market [mkt]
-  (Market:new {:yes mkt.pool.YES
-               :no mkt.pool.NO
-               :p mkt.p
-               :t (get-days-until-resolution mkt)
-               :id mkt.id
-               :url mkt.url
-               :question mkt.question}))
+  (tset mkt :yes mkt.pool.YES)
+  (tset mkt :no  mkt.pool.NO)
+  (tset mkt :t (get-days-until-resolution mkt))
+  ;; The Market class also relies on the :p property, but Manifold returns it
+  ;; like that by default, so we'll make the questionable decision not to set
+  ;; it ourselves. I want all the extra properties for future development.
+  (Market:new mkt))
+
+;; TODO: Would be nice to also check the market description. We'd have to fetch
+;; the markets individually, though.
+;; TODO: There's a group for self-resolving markets--we don't seem to get group
+;; info right now, though. Would be good to use in addition to the rest.
+(fn mkt-resolves-prob? [mkt]
+  "Heuristic function to detect markets that resolve PROB. We'll basically
+  always lose money on these, so let's exclude them from the list."
+  (let [clean-question (string.upper (. mkt :question))
+        ;; The given text, with at least one non-letter character on each side
+        ;; (so as to not false positive on substrings of words).
+        ;; See https://www.lua.org/manual/5.1/manual.html#5.4.1
+        has-mkt-pattern "[^%u]MKT[^%u]"
+        has-prob-pattern "[^%u]PROB[^%u]"
+        has-self-resolve-pattern "[^%u]SELF-RESOLVING[^%u]"]
+    (not (and (= (string.find clean-question has-mkt-pattern) nil)
+              (= (string.find clean-question has-prob-pattern) nil)
+              (= (string.find clean-question has-self-resolve-pattern) nil)))))
+
+(comment "Testing mkt-resolves-prob?."
+         ;; I eval this table in my editor to check the tests.
+         ;; TODO: Maybe add real testing at some point?
+         [(= true  (mkt-resolves-prob? { :question "Is resolve to mkt bad? [resolve to mkt]" }))
+          (= true  (mkt-resolves-prob? { :question "What are the best ways to operate a self-resolving (resolve-to-MKT) question?" }))
+          (= true  (mkt-resolves-prob? { :question "How many markets will be created next week, with daily free markets just removed? (prob=count/300)" }))
+          (= false (mkt-resolves-prob? { :question "Will Manifold allow users to set an initial probability on paid markets?" }))
+          (= false (mkt-resolves-prob? { :question "Will Raub make it to Capo Deli by 11:07pm ET?" }))])
+
+;; See https://manifold.markets/NotMyPresident/juniorbot-trap
+;; TODO: Come up with a better way to avoid "trap" markets like this. Maybe
+;; look for activity? Normally highly liquid markets should have lots of
+;; traders.
+(local *creator-blacklist* 
+  {"NotMyPresident" true ; See Junior trap market. He did tip me back though
+   "dreev" true ; I'm sorry dreev you just make too many PROB markets
+   })
+(fn mkt-creator-blacklisted? [mkt]
+  (if (not= (?. *creator-blacklist* (. mkt :creatorUsername)) nil)
+    true false))
+
+(fn include-market? [mkt]
+  (and (= (. mkt :outcomeType) :BINARY)
+       (not (. mkt :isResolved))
+       (not (mkt-creator-blacklisted? mkt)) 
+       (not (mkt-resolves-prob? mkt))))
 
 (local *market-cache* 
-  (icollect [_ m (ipairs (let [(s markets-file) (pcall #(require "markets"))]
-                           (if s markets-file
-                             (M:get-all-markets))))]
-    (when (and (= (. m :outcomeType) :BINARY)
-               (not (. m :isResolved))) 
-      (make-market m))))
+  (let [(success markets-file) (pcall #(require "markets"))
+        markets (if success markets-file (M:get-all-markets))]
+   (icollect [_ mkt (ipairs markets)]
+     (if (include-market? mkt) (make-market mkt) nil))))
 
-(local *bets-cache*
-  (let [(s bets-file) (pcall #(require "bets"))]
-    (if s bets-file
-      (M:get-bets { :username (. (M:get-authenticated-user) :username) }))))
+;; Bets cache currently not in use
+; (local *bets-cache*
+;   (let [(s bets-file) (pcall #(require "bets"))]
+;     (if s bets-file
+;       (M:get-bets { :username (. (M:get-authenticated-user) :username) }))))
 
-(local *indexed-market-cache*
-  (accumulate [index {}
-               _ m (ipairs *market-cache*)]
-    (do (tset index (. m :id) m) index)))
+;; ID-indexed market cache currently not in use
+; (local *indexed-market-cache*
+;   (accumulate [index {}
+;                _ m (ipairs *market-cache*)]
+;     (do (tset index (. m :id) m) index)))
 
-(fn get-all-investments [])
+; (fn get-all-investments [])
 
-(fn get-portfolio-value [])
+; (fn get-portfolio-value [])
 
 (fn get-balance []
   (or (?. (M:get-authenticated-user) :balance) 0))
 
-(fn get-net-worth []
-  (let [balance (get-balance)
-        investments (get-portfolio-value)]
-    (+ balance investments)))
+; (fn get-net-worth []
+;   (let [balance (get-balance)
+;         investments (get-portfolio-value)]
+;     (+ balance investments)))
 
 (fn score-market [mkt]
   (let [prob (mkt:prob)
@@ -125,11 +177,14 @@
                   (> score-a score-b)))))
 
 ;; TODO: Double check that prices haven't changed before we place orders
+;; TODO: Add a flag or something to enable dry runs
+(local *dry-run* false)
 (fn place-bet [mkt outcome amount]
   (log "Buying" amount outcome "on" mkt.question)
-  (M:bet {:contract mkt.id
-          :outcome outcome
-          :amount amount}))
+  (when (not *dry-run*)
+    (M:bet {:contract mkt.id
+            :outcome outcome
+            :amount amount})))
 
 (fn make-buy [mkt amount]
   (let [prob (mkt:prob)
@@ -150,7 +205,6 @@
       (make-buy (. markets (+ incr-to-spend 1)) last-incr))
     (if (= incr-to-spend last-incr 0) (log "No balance to spend!"))))
 
-;; TODO: Detect and ignore markets that resolve PROB, we lose money on them
 ;; TODO: Calculate portfolio value and sell out of low-return shares to free up cash
 ;; TODO: Account for new flat trading fee in market math code
 ;; TODO: Divide invested money intelligently to maximize returns
